@@ -1,10 +1,33 @@
 (() => {
 'use strict';
+// Gallery indexes are part of saved room state. Append new pictures to preserve existing rooms.
 const scenes = [
-  ['Golden Morning', '1470252649378-9c29740c9fa8'],
-  ['Mountain Lake', '1470770841072-f978cf4d019e'],
-  ['Forest Light', '1441974231531-c6227db76b6e']
+  ["Golden Morning","1470252649378-9c29740c9fa8",0],
+  ["Mountain Lake","1470770841072-f978cf4d019e",0],
+  ["Forest Light","1441974231531-c6227db76b6e",0],
+  ["Ocean Breeze","1500375592092-40eb2168fd21",0],
+  ["Gallery Colors","1579783902614-a3fb3927b6a5",1],
+  ["Color Study","1541961017774-22349e4a1262",1],
+  ["Artist’s Studio","1513364776144-60967b0f800f",1],
+  ["Painted Layers","1577083552431-6e5fd01aa342",1],
+  ["Better Together","1516589178581-6cd7833ae3b2",2],
+  ["Sweetheart","1518199266791-5375a83190b7",2],
+  ["Wedding Day","1529636798458-92182e662485",2],
+  ["For You","1518895949257-7621c3c786d7",2],
+  ["Paris","1502602898657-3e91760cbb34",3],
+  ["Tokyo","1540959733332-eab4deabeeaf",3],
+  ["Santorini","1613395877344-13d4a8e0d49e",3],
+  ["Taj Mahal","1564507592333-c60657eea523",3],
+  ["Curious Cat","1514888286974-6c03e2ca1dba",4],
+  ["Good Dog","1543466835-00a7907e9de1",4],
+  ["Woodland Fox","1474511320723-9a56873867b5",4],
+  ["Woodland Watch","1472396961693-142e6e269027",4],
+  ["Coffee Break","1509042239860-f550ce710b93",5],
+  ["Pizza Night","1574071318508-1cdbab80d002",5],
+  ["Fresh Berries","1464965911861-746a04b4bca6",5],
+  ["Bakery Morning","1555507036-ab1f4038808a",5]
 ];
+const categories = ["Nature","Art","Love","Travel","Animals","Food & Drink"];
 const photo = (id, width) => 'https://images.unsplash.com/photo-' + scenes[id][1] + '?auto=format&fit=crop&w=' + width + '&q=85';
 const $ = id => document.getElementById(id);
 const board = $('board');
@@ -39,14 +62,62 @@ const safeStorage = (method, ...args) => {
 function announce(message) { $('hint').textContent = message; }
 function status(message) { $('status').textContent = message; $('status').hidden = false; }
 
-for (const [index, [name]] of scenes.entries()) {
-  const label = document.createElement('label');
-  label.className = 'scene';
-  label.innerHTML = '<input type="radio" name="scene" value="' + index + '"' + (index ? '' : ' checked') + '><img alt=""><span></span>';
-  label.querySelector('img').src = photo(index, 280);
-  label.querySelector('span').textContent = name;
-  $('gallery').append(label);
+let activeCategory = 0;
+let selectedScene = 0;
+const categoryButtons = categories.map((name,index)=>{
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = name;
+  button.addEventListener('click',()=>{
+    activeCategory = index;
+    renderGallery();
+  });
+  $('categories').append(button);
+  return button;
+});
+function updateGallerySelection() {
+  const inputs = $('gallery').querySelectorAll('input');
+  for (const input of inputs) input.checked = !customPhoto && Number(input.value) === selectedScene;
+  $('picture-selection').textContent = 'Selected: '+(customPhoto ? 'Your photo' : scenes[selectedScene][0]);
 }
+function chooseScene(index) {
+  selectedScene = index;
+  customPhoto = null;
+  $('photo-status').textContent = '';
+  updateGallerySelection();
+}
+function renderGallery() {
+  categoryButtons.forEach((button,i)=>button.setAttribute('aria-pressed',i === activeCategory));
+  const gallery = $('gallery');
+  gallery.replaceChildren();
+  for (const [index,[name,,category]] of scenes.entries()) {
+    if (category !== activeCategory) continue;
+    const label = document.createElement('label');
+    label.className = 'scene';
+    const input = document.createElement('input');
+    input.type = 'radio';
+    input.name = 'scene';
+    input.value = index;
+    input.addEventListener('change',()=>chooseScene(index));
+    const img = document.createElement('img');
+    img.src = photo(index,360);
+    img.alt = '';
+    img.decoding = 'async';
+    const caption = document.createElement('span');
+    caption.textContent = name;
+    label.append(input,img,caption);
+    gallery.append(label);
+  }
+  updateGallerySelection();
+}
+$('shuffle-picture').addEventListener('click',()=>{
+  const other = scenes.map((_,i)=>i).filter(i=>customPhoto || i !== selectedScene);
+  const index = other[Math.floor(Math.random()*other.length)];
+  activeCategory = scenes[index][2];
+  chooseScene(index);
+  renderGallery();
+});
+renderGallery();
 
 function makeModel(scene, count) {
   const order = Array.from({length: count}, (_, i) => i);
@@ -665,20 +736,17 @@ crop.addEventListener('close',()=>{
   if (customPhoto.length > 185000) {
     customPhoto = null;
     $('photo-status').textContent = 'Try a smaller or less detailed photo.';
+    updateGallerySelection();
     return;
   }
   $('photo-status').textContent = 'Your cropped photo is selected.';
-  document.querySelectorAll('#gallery input').forEach(input=>input.checked=false);
-});
-$('gallery').addEventListener('change',()=>{
-  customPhoto = null;
-  $('photo-status').textContent = '';
+  updateGallerySelection();
 });
 $('setup').addEventListener('submit',async event=>{
   event.preventDefault();
   if (!crypto.subtle) { alert('Open this game over HTTPS or localhost.'); return; }
   const token = hex(bytes(32));
-  const scene = customPhoto ? -1 : Number(new FormData(event.currentTarget).get('scene'));
+  const scene = customPhoto ? -1 : selectedScene;
   const setup = makeModel(scene,Number($('size').value));
   history.replaceState(null,'','#'+token);
   await start(token,setup);
