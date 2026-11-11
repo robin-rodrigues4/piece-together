@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#141c17"><meta name="description" content="A shared jigsaw puzzle for two."><title>Piece Together</title><link rel="stylesheet" href="style.css"><script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.14.1/mqtt.min.js" defer></script><script src="game.js" defer></script></head>
+<body><main>
+<header><a href="./" class="brand"><span aria-hidden="true">✦</span> Piece Together</a><span class="status" id="status" role="status" hidden></span></header>
+<section id="home">
+<div class="hero"><div><p class="kicker">ONLINE JIGSAW FOR TWO</p><h1>Piece<br>Together.</h1><p>Pick a picture, start a room, and invite a friend to finish it with you.</p></div></div>
+<form id="setup">
+<fieldset><legend>Choose a picture</legend><div class="gallery" id="gallery"></div></fieldset>
+<label class="size">Puzzle size<select id="size"><option value="12">12 pieces</option><option value="20">20 pieces</option><option value="30">30 pieces</option></select></label>
+<button class="primary" type="submit">Create a room <span aria-hidden="true">↗</span></button>
+</form>
+</section>
+<section id="game" hidden>
+<div class="toolbar"><div><h1 id="title">Joining room…</h1><div id="progress" aria-live="polite"></div></div><button id="invite" class="primary" type="button">Invite friend</button></div>
+<div class="meter" aria-hidden="true"><i id="meter"></i></div>
+<div class="boardhead"><span>PUZZLE BOARD</span><button id="reference" type="button" aria-pressed="false">Show picture</button></div>
+<svg id="board" viewBox="0 0 600 850" aria-label="Shared jigsaw board"></svg>
+<p id="hint" class="hint" aria-live="polite">Drag a piece, or tap it and then tap its place on the board.</p>
+</section>
+</main><dialog id="share"><form method="dialog"><h2>Invite a friend</h2><p>Send them this room link. Keep your room open while you play.</p><input id="link" readonly aria-label="Room link"><div class="actions"><button value="close">Close</button><button id="copy" type="button" class="primary">Copy link</button></div></form></dialog></body></html>
