@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#141c17"><meta name="description" content="A shared jigsaw puzzle for two."><title>Piece Together</title><link rel="stylesheet" href="style.css?v=5"><script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.14.1/mqtt.min.js" defer></script><script src="game.js?v=5" defer></script></head>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#141c17"><meta name="description" content="A shared jigsaw puzzle for two."><title>Piece Together</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&amp;family=Instrument+Serif:ital@0;1&amp;display=swap" rel="stylesheet"><link rel="stylesheet" href="style.css?v=6"><script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.14.1/mqtt.min.js" defer></script><script src="game.js?v=6" defer></script></head>
 <body><main>
 <header><a href="./" class="brand"><span aria-hidden="true">✦</span> Piece Together</a><span class="status" id="status" role="status" hidden></span></header>
 <section id="home">
-<div class="hero"><div><p class="kicker">ONLINE JIGSAW FOR TWO</p><h1>Piece<br>Together.</h1><p>Pick a picture, start a room, and invite a friend to finish it with you.</p></div></div>
+<div class="hero"><img id="hero-art" alt="" src="https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?auto=format&amp;fit=crop&amp;w=1100&amp;q=85"><div class="hero-copy"><p class="kicker">ONLINE JIGSAW FOR TWO</p><h1>Piece <em>Together.</em></h1><p>Pick a picture, start a room, and invite a friend to finish it with you.</p></div></div>
 <form id="setup">
 <fieldset class="picture-picker">
 <legend>Choose a picture</legend>
@@ -13,6 +13,7 @@
 </fieldset>
 <div class="custom"><label for="custom-photo">Use your own photo</label><input type="file" id="custom-photo" accept="image/*"><p id="photo-status" role="status"></p></div>
 <label class="size">Puzzle size<select id="size"><option value="12">12 pieces</option><option value="20">20 pieces</option><option value="30">30 pieces</option><option value="48">48 pieces</option><option value="70">70 pieces</option></select></label>
+<label class="name-field" for="create-name">Your name <span>Optional</span><input id="create-name" maxlength="48" autocomplete="nickname" placeholder="Player 1" dir="auto"></label>
 <button class="primary" type="submit">Create a room <span aria-hidden="true">↗</span></button>
 </form>
 </section>
@@ -25,6 +26,7 @@
 <div class="score-card" id="score-2"><span id="player-2">Player 2</span><strong id="points-2">0</strong></div>
 </div><p id="unscored" hidden></p>
 </section>
+<div id="match-result" class="match-result" role="status" hidden><strong id="result-title"></strong><span id="result-score"></span></div>
 <div class="boardhead"><span>PUZZLE BOARD</span><button id="reference" type="button">Hold to show picture</button></div>
 <div class="board-tools" aria-label="Board controls"><button id="zoom-out" aria-label="Zoom out">−</button><button id="zoom-reset" aria-label="Reset zoom">100%</button><button id="zoom-in" aria-label="Zoom in">+</button><button id="pan" aria-pressed="false">Pan</button><button id="ping" aria-pressed="false">Ping</button></div>
 <svg id="board" viewBox="0 0 600 466" aria-label="Shared jigsaw board"></svg>
@@ -32,4 +34,4 @@
 <div id="tray" class="tray" aria-labelledby="tray-title" tabindex="0"></div>
 <p id="hint" class="hint" aria-live="polite">Tap a tray piece, then tap the board. Drag pieces to move them.</p>
 </section>
-</main><dialog id="share"><form method="dialog"><h2>Invite a friend</h2><p>Send them this room link. Bookmark this link to return to this puzzle.</p><input id="link" readonly aria-label="Room link"><div class="actions"><button value="close">Close</button><button id="copy" type="button" class="primary">Copy link</button></div></form></dialog><dialog id="crop"><form method="dialog"><h2>Crop your photo</h2><canvas id="crop-preview" width="524" height="388" aria-label="Photo crop preview"></canvas><label>Horizontal position <input id="crop-x" type="range" min="0" max="100" value="50"></label><label>Vertical position <input id="crop-y" type="range" min="0" max="100" value="50"></label><label>Zoom <input id="crop-zoom" type="range" min="100" max="260" value="100"></label><div class="actions"><button value="cancel">Cancel</button><button value="apply" class="primary">Use photo</button></div></form></dialog></body></html>
+</main><dialog id="share"><form method="dialog"><h2>Invite a friend</h2><p>Send them this room link. Bookmark this link to return to this puzzle.</p><input id="link" readonly aria-label="Room link"><div class="actions"><button value="close">Close</button><button id="copy" type="button" class="primary">Copy link</button></div></form></dialog><dialog id="crop"><form method="dialog"><h2>Crop your photo</h2><canvas id="crop-preview" width="524" height="388" aria-label="Photo crop preview"></canvas><label>Horizontal position <input id="crop-x" type="range" min="0" max="100" value="50"></label><label>Vertical position <input id="crop-y" type="range" min="0" max="100" value="50"></label><label>Zoom <input id="crop-zoom" type="range" min="100" max="260" value="100"></label><div class="actions"><button value="cancel">Cancel</button><button value="apply" class="primary">Use photo</button></div></form></dialog><dialog id="join-dialog" aria-labelledby="join-title"><form id="join-form"><h2 id="join-title">Join puzzle room</h2><label class="name-field" for="join-name">Your name <span>Optional</span><input id="join-name" maxlength="48" autocomplete="nickname" placeholder="Player 2" dir="auto"></label><div class="actions"><a href="./">Back to gallery</a><button class="primary" type="submit">Join room</button></div></form></dialog></body></html>

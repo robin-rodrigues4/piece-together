@@ -51,7 +51,8 @@ let model, cells = [], nodes = [], piecesLayer, imageHint, selected = null, drag
 let locks = new Map(), movingAt = 0, shown = false;
 let trayButtons = [], edgesOnly = false, customPhoto = null, viewport, pingLayer;
 let zoom = 1, offsetX = 0, offsetY = 0, panMode = false, pingMode = false, gesture, pointers = new Map();
-let mySeat = null;
+let mySeat = null, displayName = '';
+const motionAllowed = () => !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 let term = 0, leader = null, checkpoint, electionAt = 0, lastPing = 0, blocked = false;
 const saveDays = 7;
 const roomLife = saveDays * 86400;
@@ -80,6 +81,8 @@ function updateGallerySelection() {
   const inputs = $('gallery').querySelectorAll('input');
   for (const input of inputs) input.checked = !customPhoto && Number(input.value) === selectedScene;
   $('picture-selection').textContent = 'Selected: '+(customPhoto ? 'Your photo' : scenes[selectedScene][0]);
+  const art = $('hero-art'), source = customPhoto || photo(selectedScene,1100);
+  if (art.getAttribute('src') !== source) art.src = source;
 }
 function chooseScene(index) {
   selectedScene = index;
@@ -157,7 +160,11 @@ function build() {
   $('reference').disabled = false;
   viewport = svg('g');
   board.append(viewport);
-  viewport.append(svg('rect',{x:boardX,y:boardY,width:boardWidth,height:boardHeight,rx:4,fill:'#101913',stroke:'#77927b','stroke-width':2}));
+  const surface = {x:boardX,y:boardY,width:boardWidth,height:boardHeight,rx:8};
+  const dots = svg('pattern',{id:'board-dots',width:15,height:15,patternUnits:'userSpaceOnUse'});
+  dots.append(svg('circle',{cx:2,cy:2,r:.8,fill:'#cde5c5',opacity:.20}));
+  viewport.append(dots,svg('rect',{...surface,class:'board-surface'}),
+    svg('rect',{...surface,fill:'url(#board-dots)','pointer-events':'none'}));
   imageHint = svg('image',{href:source,x:boardX,y:boardY,width:boardWidth,height:boardHeight,preserveAspectRatio:'xMidYMid slice',opacity:shown ? .55 : 0,'pointer-events':'none'});
   viewport.append(imageHint);
   const defs = svg('defs');
@@ -223,6 +230,21 @@ function preferredSeat() {
   }
   return saved === '2' ? 2 : 1;
 }
+function cleanName(value) {
+  return typeof value === 'string' ? Array.from(value.replace(/[\p{Cc}\p{Cf}]/gu,'').trim().replace(/\s+/g,' ')).slice(0,24).join('') : '';
+}
+function playerName(seat) {
+  return cleanName(model.playerNames?.[seat-1]) || 'Player '+seat;
+}
+function setPlayerName(seat,value) {
+  const name = cleanName(value);
+  const previous = cleanName(model.playerNames?.[seat-1]);
+  if (!name || previous === name || (previous && model.pieces.some(p=>p.done && p.scoredBy === seat))) return false;
+  const names = [cleanName(model.playerNames?.[0]),cleanName(model.playerNames?.[1])];
+  names[seat-1] = name;
+  model = {...model,playerNames:names};
+  return true;
+}
 function renderScore(done) {
   const scores = [0,0];
   for (const piece of model.pieces) {
@@ -231,15 +253,34 @@ function renderScore(done) {
   $('scoreboard').hidden = false;
   scores.forEach((score,i)=>{
     const seat = i+1, own = mySeat === seat;
-    const name = 'Player '+seat+(own ? ' (You)' : '');
+    const name = playerName(seat)+(own ? ' (You)' : '');
     const label = $('player-'+seat), points = $('points-'+seat);
     if (label.textContent !== name) label.textContent = name;
-    if (points.textContent !== String(score)) points.textContent = String(score);
+    if (points.textContent !== String(score)) {
+      const increased = score > Number(points.textContent);
+      points.textContent = String(score);
+      if (increased && motionAllowed()) points.animate([
+        {transform:'translateY(3px) scale(.84)',opacity:.55},
+        {transform:'translateY(0) scale(1.16)',opacity:1,offset:.58},
+        {transform:'translateY(0) scale(1)',opacity:1}
+      ],{duration:290,easing:'ease-out'});
+    }
     $('score-'+seat).classList.toggle('own-score',own);
   });
   const unscored = done-scores[0]-scores[1];
   $('unscored').hidden = unscored === 0;
   if (unscored) $('unscored').textContent = unscored+' placed before scoring was available.';
+  const complete = done === model.count;
+  const result = $('match-result');
+  if (complete) {
+    const winner = scores[0] === scores[1] ? 0 : scores[0] > scores[1] ? 1 : 2;
+    const headline = winner ? playerName(winner)+' wins!' : 'It’s a tie!';
+    const detail = playerName(1)+' '+scores[0]+' · '+playerName(2)+' '+scores[1];
+    if ($('result-title').textContent !== headline) $('result-title').textContent = headline;
+    if ($('result-score').textContent !== detail) $('result-score').textContent = detail;
+  }
+  result.hidden = !complete;
+  board.classList.toggle('board-complete',complete);
 }
 function render() {
   if (!model) return;
@@ -257,7 +298,12 @@ function render() {
     node.classList.toggle('mine',lock?.owner === id);
     node.classList.toggle('theirs',!!lock && lock.owner !== id);
     node.setAttribute('tabindex',piece.done || piece.tray ? -1 : 0);
-    if (piece.done && !node.dataset.settled) { piecesLayer.prepend(node); node.dataset.settled = 'yes'; }
+    if (piece.done && !node.dataset.settled) {
+      piecesLayer.prepend(node);
+      node.dataset.settled = 'yes';
+      if (node.dataset.loose) node.classList.add('just-placed');
+    }
+    if (!piece.done) node.dataset.loose = 'yes';
     const border = i%cols===0 || i%cols===cols-1 || i<cols || i>=cols*(rows-1);
     const button = trayButtons[i];
     button.hidden = !piece.tray || (edgesOnly && !border);
@@ -537,6 +583,7 @@ function takeLead() {
   rememberSeat(mySeat ?? preferredSeat());
   locks.clear(); drag = null;
   loadModel(checkpoint.model);
+  if (setPlayerName(mySeat,displayName)) render();
   status('Waiting for friend');
   announce(hintText);
   snapshot();
@@ -572,7 +619,7 @@ function receive(payload) {
     }
     if (message.type === 'beacon') {
       if (!acceptLeader(message)) return;
-      if (!blocked && receivedVersion < 0) send('hello',{resync:true,to:leader});
+      if (!blocked && receivedVersion < 0) send('hello',{name:displayName,resync:true,to:leader});
       return;
     }
     if (message.type === 'ping') {
@@ -591,7 +638,13 @@ function receive(payload) {
         guestId = message.sender;
         peerSeen = Date.now();
         status('● 2 players connected');
-        if (joining) state(guestId);
+        const renamed = setPlayerName(3-mySeat,message.name);
+        if (renamed) {
+          version++;
+          render();
+          snapshot();
+        }
+        if (joining || renamed) state(guestId);
         else send('pong',{to:guestId,term,version});
       } else if (message.sender === guestId && ['grab','move','drop','cancel'].includes(message.type)) {
         peerSeen = Date.now(); applyMove(guestId,message.type,message);
@@ -603,6 +656,7 @@ function receive(payload) {
       board.replaceChildren(); $('tray').replaceChildren(); $('title').textContent = 'Room is full';
       hidePreview();
       $('scoreboard').hidden = true;
+      $('match-result').hidden = true;
       $('progress').textContent = ''; $('meter').style.width = '0'; $('reference').disabled = true;
       status('Room is full'); announce('Waiting for a player slot to open.');
       return;
@@ -623,11 +677,11 @@ function receive(payload) {
     peerSeen = Date.now();
     if (message.type === 'pong') {
       status('● 2 players connected');
-      if (receivedVersion !== message.version) send('hello',{resync:true,to:leader});
+      if (receivedVersion !== message.version) send('hello',{name:displayName,resync:true,to:leader});
       return;
     }
     if (message.type !== 'patch' || !model || message.version <= receivedVersion) return;
-    if (message.version !== receivedVersion+1) { send('hello',{resync:true,to:leader}); return; }
+    if (message.version !== receivedVersion+1) { send('hello',{name:displayName,resync:true,to:leader}); return; }
     receivedVersion = message.version;
     for (const [piece,value,owner] of message.changes) {
       model.pieces[piece] = value;
@@ -643,7 +697,7 @@ function connected() {
     snapshot();
     send('beacon',{term});
   } else {
-    status('Finding room…'); peerSeen = 0; scheduleElection(); send('hello',{resync:true});
+    status('Finding room…'); peerSeen = 0; scheduleElection(); send('hello',{name:displayName,resync:true});
   }
 }
 function transport() {
@@ -702,10 +756,12 @@ function tick() {
     status('Room unavailable');
     announce('Check the invite link. Online saves are kept for up to seven days.');
   }
-  send('hello',{resync:!model || receivedVersion < 0,to:leader});
+  send('hello',{name:displayName,resync:!model || receivedVersion < 0,to:leader});
 }
-async function start(token, setup) {
+async function start(token, setup, name = '') {
   room = token;
+  displayName = cleanName(name);
+  if (displayName) safeStorage('setItem',storageKey()+'-name',displayName);
   const raw = unhex(token);
   key = await crypto.subtle.importKey('raw',raw,'AES-GCM',false,['encrypt','decrypt']);
   topic = 'piece-together/v2/'+hex(new Uint8Array(await crypto.subtle.digest('SHA-256',raw))).slice(0,40);
@@ -714,6 +770,7 @@ async function start(token, setup) {
   if (setup) {
     host = true; leader = id; term = 1;
     rememberSeat(1);
+    setup.playerNames = [displayName,''];
     loadModel(setup); snapshot();
   } else {
     try {
@@ -730,7 +787,9 @@ async function start(token, setup) {
           previous.pieces = previous.pieces.map((p,i)=>({...p,tray:!p.done && p.y>448,slot:i}));
           host = true; leader = id; term = 1;
           rememberSeat(preferredSeat());
-          loadModel(previous); snapshot();
+          loadModel(previous);
+          if (setPlayerName(mySeat,displayName)) render();
+          snapshot();
         }
       } catch { /* A corrupt legacy save can be ignored. */ }
     }
@@ -788,7 +847,7 @@ $('setup').addEventListener('submit',async event=>{
   const scene = customPhoto ? -1 : selectedScene;
   const setup = makeModel(scene,Number($('size').value));
   history.replaceState(null,'','#'+token);
-  await start(token,setup);
+  await start(token,setup,$('create-name').value);
 });
 const reference = $('reference');
 let previewPointer = null, previewKey = null;
@@ -845,8 +904,17 @@ $('copy').addEventListener('click',async () => {
   try { await navigator.clipboard.writeText($('link').value); $('copy').textContent = 'Copied!'; }
   catch { $('link').select(); }
 });
-if (/^#[a-f0-9]{64}$/.test(location.hash)) {
-  if (crypto.subtle) start(location.hash.slice(1)).catch(() => status('Could not open room'));
-  else status('Open over HTTPS or localhost');
-}
+const joinToken = /^#[a-f0-9]{64}$/.test(location.hash) ? location.hash.slice(1) : null;
+if (joinToken && crypto.subtle) {
+  const joinDialog = $('join-dialog');
+  $('home').hidden = true;
+  $('join-name').value = safeStorage('getItem','piece-v2-'+joinToken+'-name') || '';
+  joinDialog.showModal();
+  joinDialog.addEventListener('cancel',event=>event.preventDefault());
+  $('join-form').addEventListener('submit',event=>{
+    event.preventDefault();
+    joinDialog.close();
+    start(joinToken,undefined,$('join-name').value).catch(()=>status('Could not open room'));
+  },{once:true});
+} else if (joinToken) status('Open over HTTPS or localhost');
 })();
