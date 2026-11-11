@@ -51,6 +51,7 @@ let model, cells = [], nodes = [], piecesLayer, imageHint, selected = null, drag
 let locks = new Map(), movingAt = 0, shown = false;
 let trayButtons = [], edgesOnly = false, customPhoto = null, viewport, pingLayer;
 let zoom = 1, offsetX = 0, offsetY = 0, panMode = false, pingMode = false, gesture, pointers = new Map();
+let mySeat = null;
 let term = 0, leader = null, checkpoint, electionAt = 0, lastPing = 0, blocked = false;
 const saveDays = 7;
 const roomLife = saveDays * 86400;
@@ -210,6 +211,36 @@ function build() {
   updateView();
   render();
 }
+function rememberSeat(seat) {
+  mySeat = seat;
+  safeStorage('setItem',storageKey()+'-seat',String(seat));
+  try { localStorage.setItem(storageKey()+'-seat',String(seat)); } catch { /* Storage is optional. */ }
+}
+function preferredSeat() {
+  let saved = safeStorage('getItem',storageKey()+'-seat');
+  if (!saved) {
+    try { saved = localStorage.getItem(storageKey()+'-seat'); } catch { /* Storage is optional. */ }
+  }
+  return saved === '2' ? 2 : 1;
+}
+function renderScore(done) {
+  const scores = [0,0];
+  for (const piece of model.pieces) {
+    if (piece.done && (piece.scoredBy === 1 || piece.scoredBy === 2)) scores[piece.scoredBy-1]++;
+  }
+  $('scoreboard').hidden = false;
+  scores.forEach((score,i)=>{
+    const seat = i+1, own = mySeat === seat;
+    const name = 'Player '+seat+(own ? ' (You)' : '');
+    const label = $('player-'+seat), points = $('points-'+seat);
+    if (label.textContent !== name) label.textContent = name;
+    if (points.textContent !== String(score)) points.textContent = String(score);
+    $('score-'+seat).classList.toggle('own-score',own);
+  });
+  const unscored = done-scores[0]-scores[1];
+  $('unscored').hidden = unscored === 0;
+  if (unscored) $('unscored').textContent = unscored+' placed before scoring was available.';
+}
 function render() {
   if (!model) return;
   const [cols,rows] = dimensions[model.count];
@@ -236,6 +267,7 @@ function render() {
   $('tray-empty').hidden = visible > 0;
   $('tray-empty').textContent = edgesOnly ? 'No edge pieces in the tray.' : 'All pieces are on the board.';
   const done = model.pieces.filter(piece => piece.done).length;
+  renderScore(done);
   $('progress').textContent = done + ' / ' + model.count + ' pieces';
   $('meter').style.width = (done/model.count*100) + '%';
   if (done === model.count) announce('Puzzle complete! You finished it together.');
@@ -259,7 +291,7 @@ function cache(value) {
   try { localStorage.setItem(storageKey(),JSON.stringify(value)); } catch { /* Browser storage can be full or disabled. */ }
 }
 function state(to) {
-  return send('state',{to,term,version,model,locks:[...locks].map(([i,lock])=>[i,{owner:lock.owner}])});
+  return send('state',{to,term,version,model,seat:3-mySeat,locks:[...locks].map(([i,lock])=>[i,{owner:lock.owner}])});
 }
 function patch(indices) {
   version++;
@@ -272,10 +304,10 @@ function moveGroup(indices,dx,dy) {
     model.pieces[i] = {...p,x:p.x+dx,y:p.y+dy,tray:false};
   }
 }
-function settle(indices) {
-  for (const i of indices) model.pieces[i] = {...model.pieces[i],x:cells[i].x,y:cells[i].y,done:true,tray:false};
+function settle(indices,seat) {
+  for (const i of indices) model.pieces[i] = {...model.pieces[i],x:cells[i].x,y:cells[i].y,done:true,tray:false,scoredBy:seat};
 }
-function attach(indices) {
+function attach(indices,seat) {
   const [cols] = dimensions[model.count];
   const moving = new Set(indices);
   let nearest;
@@ -296,7 +328,7 @@ function attach(indices) {
   }
   if (!nearest) return indices;
   const other = model.pieces[nearest.j];
-  if (other.done) { settle(indices); return indices; }
+  if (other.done) { settle(indices,seat); return indices; }
   const merged = [...indices,...members(nearest.j)];
   moveGroup(indices,nearest.dx,nearest.dy);
   const group = Math.min(...merged);
@@ -332,8 +364,9 @@ function applyMove(player, action, data) {
   moveGroup(indices,x-p.x,y-p.y);
   if (action === 'drop') {
     for (const j of indices) locks.delete(j);
-    if (snap) settle(indices);
-    const changed = snap ? indices : attach(indices);
+    const seat = player === id ? mySeat : 3-mySeat;
+    if (snap) settle(indices,seat);
+    const changed = snap ? indices : attach(indices,seat);
     patch(changed);
     snapshot();
   } else {
@@ -501,6 +534,7 @@ function takeLead() {
   if (!online || !checkpoint || blocked) return;
   term = Math.max(term,checkpoint.term)+1;
   leader = id; host = true; guestId = null; version = checkpoint.version;
+  rememberSeat(mySeat ?? preferredSeat());
   locks.clear(); drag = null;
   loadModel(checkpoint.model);
   status('Waiting for friend');
@@ -567,6 +601,7 @@ function receive(payload) {
     if (message.type === 'full' && acceptLeader(message)) {
       blocked = true; drag = null; selected = null; model = null;
       board.replaceChildren(); $('tray').replaceChildren(); $('title').textContent = 'Room is full';
+      $('scoreboard').hidden = true;
       $('progress').textContent = ''; $('meter').style.width = '0'; $('reference').disabled = true;
       status('Room is full'); announce('Waiting for a player slot to open.');
       return;
@@ -576,6 +611,7 @@ function receive(payload) {
       const joining = blocked || receivedVersion < 0;
       blocked = false;
       receivedVersion = message.version;
+      if (message.seat === 1 || message.seat === 2) rememberSeat(message.seat);
       locks = new Map(message.locks);
       status('● 2 players connected');
       if (joining) announce(hintText);
@@ -676,6 +712,7 @@ async function start(token, setup) {
   status('Connecting…');
   if (setup) {
     host = true; leader = id; term = 1;
+    rememberSeat(1);
     loadModel(setup); snapshot();
   } else {
     try {
@@ -691,6 +728,7 @@ async function start(token, setup) {
         if (validModel(previous)) {
           previous.pieces = previous.pieces.map((p,i)=>({...p,tray:!p.done && p.y>448,slot:i}));
           host = true; leader = id; term = 1;
+          rememberSeat(preferredSeat());
           loadModel(previous); snapshot();
         }
       } catch { /* A corrupt legacy save can be ignored. */ }

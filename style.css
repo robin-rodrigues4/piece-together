@@ -33,3 +33,10 @@ button[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
 .gallery-footer button{font-size:.82rem;white-space:nowrap}
 @media(min-width:550px){.gallery{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:480px){.hero{min-height:222px;padding:17px}.hero h1{font-size:clamp(3rem,12vw,4rem);margin:9px 0 11px}}
+
+#scoreboard{margin:8px 0 1px}
+.score-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.score-card{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:5px 10px;border:1px solid var(--line);background:var(--panel);border-radius:9px;color:var(--muted);font-size:.82rem}
+.score-card.own-score{border-color:#8e9c62;color:var(--ink)}
+.score-card strong{color:var(--accent);font-size:1.08rem;font-variant-numeric:tabular-nums}
+#unscored{font-size:.73rem;color:var(--muted);margin:4px 0 0}

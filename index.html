@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#141c17"><meta name="description" content="A shared jigsaw puzzle for two."><title>Piece Together</title><link rel="stylesheet" href="style.css?v=3"><script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.14.1/mqtt.min.js" defer></script><script src="game.js?v=3" defer></script></head>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#141c17"><meta name="description" content="A shared jigsaw puzzle for two."><title>Piece Together</title><link rel="stylesheet" href="style.css?v=4"><script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.14.1/mqtt.min.js" defer></script><script src="game.js?v=4" defer></script></head>
 <body><main>
 <header><a href="./" class="brand"><span aria-hidden="true">✦</span> Piece Together</a><span class="status" id="status" role="status" hidden></span></header>
 <section id="home">
@@ -19,6 +19,12 @@
 <section id="game" hidden>
 <div class="toolbar"><div><h1 id="title">Joining room…</h1><div id="progress" aria-live="polite"></div></div><button id="invite" class="primary" type="button">Invite friend</button></div>
 <div class="meter" aria-hidden="true"><i id="meter"></i></div>
+<section id="scoreboard" aria-label="Shared scores, one point per placed piece" hidden>
+<div class="score-row" aria-live="polite" aria-atomic="true">
+<div class="score-card" id="score-1"><span id="player-1">Player 1</span><strong id="points-1">0</strong></div>
+<div class="score-card" id="score-2"><span id="player-2">Player 2</span><strong id="points-2">0</strong></div>
+</div><p id="unscored" hidden></p>
+</section>
 <div class="boardhead"><span>PUZZLE BOARD</span><button id="reference" type="button" aria-pressed="false">Show picture</button></div>
 <div class="board-tools" aria-label="Board controls"><button id="zoom-out" aria-label="Zoom out">−</button><button id="zoom-reset" aria-label="Reset zoom">100%</button><button id="zoom-in" aria-label="Zoom in">+</button><button id="pan" aria-pressed="false">Pan</button><button id="ping" aria-pressed="false">Ping</button></div>
 <svg id="board" viewBox="0 0 600 466" aria-label="Shared jigsaw board"></svg>
