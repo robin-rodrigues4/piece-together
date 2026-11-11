@@ -1,12 +1,13 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#141c17"><meta name="description" content="A shared jigsaw puzzle for two."><title>Piece Together</title><link rel="stylesheet" href="style.css"><script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.14.1/mqtt.min.js" defer></script><script src="game.js" defer></script></head>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#141c17"><meta name="description" content="A shared jigsaw puzzle for two."><title>Piece Together</title><link rel="stylesheet" href="style.css?v=2"><script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.14.1/mqtt.min.js" defer></script><script src="game.js?v=2" defer></script></head>
 <body><main>
 <header><a href="./" class="brand"><span aria-hidden="true">✦</span> Piece Together</a><span class="status" id="status" role="status" hidden></span></header>
 <section id="home">
 <div class="hero"><div><p class="kicker">ONLINE JIGSAW FOR TWO</p><h1>Piece<br>Together.</h1><p>Pick a picture, start a room, and invite a friend to finish it with you.</p></div></div>
 <form id="setup">
 <fieldset><legend>Choose a picture</legend><div class="gallery" id="gallery"></div></fieldset>
-<label class="size">Puzzle size<select id="size"><option value="12">12 pieces</option><option value="20">20 pieces</option><option value="30">30 pieces</option></select></label>
+<div class="custom"><label for="custom-photo">Use your own photo</label><input type="file" id="custom-photo" accept="image/*"><p id="photo-status" role="status"></p></div>
+<label class="size">Puzzle size<select id="size"><option value="12">12 pieces</option><option value="20">20 pieces</option><option value="30">30 pieces</option><option value="48">48 pieces</option><option value="70">70 pieces</option></select></label>
 <button class="primary" type="submit">Create a room <span aria-hidden="true">↗</span></button>
 </form>
 </section>
@@ -14,7 +15,10 @@
 <div class="toolbar"><div><h1 id="title">Joining room…</h1><div id="progress" aria-live="polite"></div></div><button id="invite" class="primary" type="button">Invite friend</button></div>
 <div class="meter" aria-hidden="true"><i id="meter"></i></div>
 <div class="boardhead"><span>PUZZLE BOARD</span><button id="reference" type="button" aria-pressed="false">Show picture</button></div>
-<svg id="board" viewBox="0 0 600 850" aria-label="Shared jigsaw board"></svg>
-<p id="hint" class="hint" aria-live="polite">Drag a piece, or tap it and then tap its place on the board.</p>
+<div class="board-tools" aria-label="Board controls"><button id="zoom-out" aria-label="Zoom out">−</button><button id="zoom-reset" aria-label="Reset zoom">100%</button><button id="zoom-in" aria-label="Zoom in">+</button><button id="pan" aria-pressed="false">Pan</button><button id="ping" aria-pressed="false">Ping</button></div>
+<svg id="board" viewBox="0 0 600 466" aria-label="Shared jigsaw board"></svg>
+<div class="boardhead"><span id="tray-title">PIECE TRAY</span><button id="edges" aria-pressed="false">Edges only</button></div>
+<div id="tray" class="tray" aria-labelledby="tray-title" tabindex="0"></div>
+<p id="hint" class="hint" aria-live="polite">Tap a tray piece, then tap the board. Drag pieces to move them.</p>
 </section>
-</main><dialog id="share"><form method="dialog"><h2>Invite a friend</h2><p>Send them this room link. Keep your room open while you play.</p><input id="link" readonly aria-label="Room link"><div class="actions"><button value="close">Close</button><button id="copy" type="button" class="primary">Copy link</button></div></form></dialog></body></html>
+</main><dialog id="share"><form method="dialog"><h2>Invite a friend</h2><p>Send them this room link. Bookmark this link to return to this puzzle.</p><input id="link" readonly aria-label="Room link"><div class="actions"><button value="close">Close</button><button id="copy" type="button" class="primary">Copy link</button></div></form></dialog><dialog id="crop"><form method="dialog"><h2>Crop your photo</h2><canvas id="crop-preview" width="524" height="388" aria-label="Photo crop preview"></canvas><label>Horizontal position <input id="crop-x" type="range" min="0" max="100" value="50"></label><label>Vertical position <input id="crop-y" type="range" min="0" max="100" value="50"></label><label>Zoom <input id="crop-zoom" type="range" min="100" max="260" value="100"></label><div class="actions"><button value="cancel">Cancel</button><button value="apply" class="primary">Use photo</button></div></form></dialog></body></html>
