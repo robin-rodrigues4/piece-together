@@ -40,3 +40,5 @@ button[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
 .score-card.own-score{border-color:#8e9c62;color:var(--ink)}
 .score-card strong{color:var(--accent);font-size:1.08rem;font-variant-numeric:tabular-nums}
 #unscored{font-size:.73rem;color:var(--muted);margin:4px 0 0}
+
+#reference{touch-action:none;user-select:none}

@@ -601,6 +601,7 @@ function receive(payload) {
     if (message.type === 'full' && acceptLeader(message)) {
       blocked = true; drag = null; selected = null; model = null;
       board.replaceChildren(); $('tray').replaceChildren(); $('title').textContent = 'Room is full';
+      hidePreview();
       $('scoreboard').hidden = true;
       $('progress').textContent = ''; $('meter').style.width = '0'; $('reference').disabled = true;
       status('Room is full'); announce('Waiting for a player slot to open.');
@@ -789,11 +790,48 @@ $('setup').addEventListener('submit',async event=>{
   history.replaceState(null,'','#'+token);
   await start(token,setup);
 });
-$('reference').addEventListener('click',() => {
-  shown = !shown;
-  imageHint.setAttribute('opacity',shown ? '.55' : '0');
-  $('reference').textContent = shown ? 'Hide picture' : 'Show picture';
-  $('reference').setAttribute('aria-pressed',shown);
+const reference = $('reference');
+let previewPointer = null, previewKey = null;
+function updatePreview() {
+  shown = previewPointer !== null || previewKey !== null;
+  imageHint?.setAttribute('opacity',shown ? '.55' : '0');
+}
+function hidePreview() {
+  previewPointer = null;
+  previewKey = null;
+  updatePreview();
+}
+reference.addEventListener('pointerdown',event=>{
+  if (reference.disabled || !imageHint || event.button !== 0 || previewPointer !== null) return;
+  reference.setPointerCapture(event.pointerId);
+  previewPointer = event.pointerId;
+  updatePreview();
+});
+function releasePreviewPointer(event) {
+  if (event.pointerId !== previewPointer) return;
+  previewPointer = null;
+  updatePreview();
+}
+for (const event of ['pointerup','pointercancel','lostpointercapture']) {
+  reference.addEventListener(event,releasePreviewPointer);
+}
+reference.addEventListener('keydown',event=>{
+  if (event.key !== ' ' && event.key !== 'Enter') return;
+  event.preventDefault();
+  if (reference.disabled || !imageHint || event.repeat || previewKey !== null) return;
+  previewKey = event.key;
+  updatePreview();
+});
+reference.addEventListener('keyup',event=>{
+  if (event.key !== previewKey) return;
+  event.preventDefault();
+  previewKey = null;
+  updatePreview();
+});
+reference.addEventListener('blur',hidePreview);
+window.addEventListener('blur',hidePreview);
+document.addEventListener('visibilitychange',()=>{
+  if (document.hidden) hidePreview();
 });
 $('invite').addEventListener('click',async () => {
   const url = location.href;
